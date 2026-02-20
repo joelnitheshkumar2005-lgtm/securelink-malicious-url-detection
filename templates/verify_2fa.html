@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-box glass-panel animate-fade">
+        <div class="logo" style="justify-content: center; margin-bottom: 2rem;">
+            <i class="fas fa-shield-alt"></i> SecureLink
+        </div>
+        <h2 style="margin-bottom: 1rem;">Two-Factor Authentication</h2>
+        <p style="margin-bottom: 2rem; color: var(--text-muted);">
+            Please enter the 6-digit code sent to your device.
+            <br><strong>(Mock Code: 123456)</strong>
+        </p>
+        <form method="POST">
+            <div class="form-group" style="text-align: center;">
+                <input type="text" name="code" class="form-control" maxlength="6" placeholder="000000"
+                    style="text-align: center; letter-spacing: 5px; font-size: 1.5rem;" required>
+            </div>
+            <button type="submit" class="btn-primary" style="width: 100%;">Verify</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

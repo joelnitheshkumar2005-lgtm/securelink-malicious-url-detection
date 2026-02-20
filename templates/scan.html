@@ -1,0 +1,756 @@
+{% extends 'layout.html' %}
+
+{% block page_content %}
+<!-- Load Cytoscape Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+
+<div class="glass-panel scan-box animate-fade">
+    <i class="fas fa-radar" style="font-size: 4rem; color: var(--primary); margin-bottom: 2rem;"></i>
+    <h2>Malicious URL Detector</h2>
+    <p style="color: var(--text-muted);">Enter a URL to scan for potential threats using our advanced detection engine.
+    </p>
+
+    <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 2rem;">
+        <button onclick="setScanMode('single')" id="btn-single" class="glass-panel"
+            style="padding: 10px 20px; cursor: pointer; border: 1px solid var(--primary); color: var(--primary);">
+            Single URL
+        </button>
+        <button onclick="setScanMode('batch')" id="btn-batch" class="glass-panel"
+            style="padding: 10px 20px; cursor: pointer; border: 1px solid transparent; color: var(--text-muted);">
+            Batch Scan (List)
+        </button>
+    </div>
+
+    <form method="POST" id="scanForm">
+        <input type="hidden" name="scan_type" id="scanInputType" value="standard">
+
+        <div id="singleInput" class="scan-input-group">
+            <input type="url" name="url" id="singleUrlField" class="form-control" placeholder="https://example.com"
+                required style="padding: 1.2rem; font-size: 1.1rem; flex: 2;">
+
+            <button type="submit" class="btn-primary"
+                style="padding: 0 3rem; font-size: 1.1rem; flex: 1; background: linear-gradient(135deg, #6366f1, #8b5cf6);">
+                <i class="fas fa-radar"></i> SCAN
+            </button>
+        </div>
+
+        <div id="batchInput" style="display: none;">
+            <textarea name="url" id="batchUrlField" class="form-control" rows="5"
+                placeholder="Enter multiple URLs (one per line)&#10;https://example.com&#10;https://test.com"
+                disabled></textarea>
+            <div style="font-size: 0.9rem; color: var(--text-muted); text-align: left; margin: 10px 0;">
+                <i class="fas fa-info-circle"></i> Max 10 URLs per batch scan.
+            </div>
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 1.2rem; font-size: 1.1rem;">
+                <i class="fas fa-layer-group"></i> BATCH SCAN
+            </button>
+        </div>
+    </form>
+</div>
+
+{% if batch_results %}
+<div class="glass-panel animate-fade" style="margin-top: 2rem; padding: 2rem;">
+    <h3>Batch Scan Results</h3>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>URL</th>
+                    <th>Status</th>
+                    <th>Risk Score</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for res in batch_results %}
+                <tr>
+                    <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{
+                        res.url }}</td>
+                    <td>
+                        <span
+                            class="badge {{ 'badge-low' if res.status == 'SAFE' else ('badge-high' if res.status == 'MALICIOUS' else 'badge-medium') }}">
+                            {{ res.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <div
+                            style="width: 100px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                            <div class="progress-fill {{ 'bg-safe' if res.score < 30 else ('bg-warning' if res.score < 60 else 'bg-danger') }}"
+                                style="--prog-width: {{ res.score }}%;">
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <!-- Use a form to POST standard scan request or just a GET link that triggers a fresh scan -->
+                        <!-- Since /scan accepts POST for scanning, but we want to prepopulate it? -->
+                        <!-- Easiest: Link to /scan?url=X and have JS auto-submit or just auto-fill. -->
+                        <!-- Even better: Button that calls setScanMode('single') and fills input? No, user wants to see report page. -->
+                        <!-- We can make /scan handle GET with url param to auto-scan. -->
+                        <form action="{{ url_for('scan') }}" method="POST" style="margin:0;">
+                            <input type="hidden" name="url" value="{{ res.url }}">
+                            <input type="hidden" name="scan_type" value="standard">
+                            <button type="submit" class="glass-panel"
+                                style="border: 1px solid var(--primary-dim); color: var(--primary); padding: 5px 10px; cursor: pointer; font-size: 0.8rem;">
+                                <i class="fas fa-eye"></i> View Report
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if result %}
+<div class="scan-result {{ 'result-safe' if result.status == 'SAFE' else 'result-malicious' }}">
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <div style="position: relative; width: 200px; height: 100px; margin: 0 auto 20px; overflow: hidden;">
+            <div
+                style="position: absolute; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%;">
+            </div>
+            <div
+                style="position: absolute; width: 200px; height: 200px; background: conic-gradient(from 180deg at 50% 50%, 
+                #10b981 0deg, 
+                #f59e0b 90deg, 
+                #ef4444 180deg); 
+                border-radius: 50%; opacity: 0.8; clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%); transform: rotate(180deg);">
+            </div>
+
+            <!-- Needle -->
+            <div class="needle-wrapper" style="--needle-angle: {{ (result.score * 1.8) - 90 }}deg;"></div>
+            <div
+                style="position: absolute; bottom: -10px; left: 50%; width: 20px; height: 20px; background: white; border-radius: 50%; transform: translateX(-50%); z-index: 11;">
+            </div>
+        </div>
+
+        <!-- NEW: Radar Chart Analysis -->
+        {% if result.is_ai_scan %}
+        <div
+            style="width: 100%; max-width: 400px; margin: 1rem auto; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+            <canvas id="analysisChart"></canvas>
+            <p style="text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">Risk
+                Analysis Breakdown</p>
+        </div>
+        {% endif %}
+
+        <h2 style="font-size: 2.5rem; margin-bottom: 5px;"
+            class="{{ 'text-danger' if result.score >= 60 else ('text-warning' if result.score >= 30 else 'text-safe') }}">
+            {{ result.status }}
+        </h2>
+        <p style="font-size: 1.2rem; color: var(--text-muted);">Risk Score: <strong style="color: white;">{{
+                result.score }}/100</strong></p>
+    </div>
+
+    <div class="glass-panel" style="padding: 1.5rem; background: rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3>Analysis Report</h3>
+
+        </div>
+
+        <p style="margin-top: 10px; color: var(--text-muted);">URL: {{ result.url }}</p>
+
+        <div style="margin-top: 1rem;">
+            {% if result.triggers %}
+            <ul style="list-style: none;">
+                {% for trigger in result.triggers %}
+                {% if 'Trusted Domain' in trigger %}
+                <li style="color: var(--success); margin-bottom: 5px;"><i class="fas fa-check-circle"></i> {{ trigger }}
+                </li>
+                {% else %}
+                <li style="color: var(--danger); margin-bottom: 5px;"><i class="fas fa-times-circle"></i> {{ trigger }}
+                </li>
+                {% endif %}
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p style="color: var(--success);"><i class="fas fa-check-circle"></i> No threats detected.</p>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <!-- Forensic Intelligence Section (NEW) -->
+    <div class="glass-panel" style="margin-top: 1.5rem; padding: 1.5rem; background: rgba(0,0,0,0.2);">
+        <h3><i class="fas fa-search-location"></i> Forensic Intelligence</h3>
+        <div
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-top: 1rem;">
+
+            <div class="info-card">
+                <span class="label">Server Location</span>
+                <span class="value">
+                    {% if result.geo_data %}
+                    <i class="fas fa-map-marker-alt" style="color: var(--primary);"></i> {{ result.geo_data.city }}, {{
+                    result.geo_data.country }}
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">{{ result.geo_data.isp }}
+                    </div>
+                    {% else %}
+                    Unknown
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="info-card">
+                <span class="label">IP Address</span>
+                <span class="value">
+                    <i class="fas fa-network-wired" style="color: var(--primary);"></i> {{ result.geo_data.ip if
+                    result.geo_data else 'Hidden' }}
+                </span>
+            </div>
+
+            <div class="info-card">
+                <span class="label">Domain Age</span>
+                <span class="value">
+                    {% if result.domain_age and result.domain_age != 'None' %}
+                    <i class="fas fa-hourglass-half" style="color: var(--primary);"></i> {{ result.domain_age }} Days
+                    {% else %}
+                    Unknown
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="info-card">
+                <span class="label">SSL Certificate</span>
+                <span class="value"
+                    style="color: {{ 'var(--success)' if result.has_ssl else 'var(--danger)' }}; font-weight: bold;">
+                    <i class="{{ 'fas fa-lock' if result.has_ssl else 'fas fa-lock-open' }}"></i> {{ 'Valid & Secure' if
+                    result.has_ssl else 'Missing / Invalid' }}
+                </span>
+            </div>
+
+            <div class="info-card">
+                <span class="label">Server Status</span>
+                <span class="value"
+                    style="color: {{ 'var(--success)' if result.is_online else 'var(--danger)' }}; font-weight: bold;">
+                    <i class="{{ 'fas fa-wifi' if result.is_online else 'fas fa-ban' }}"></i> {{ 'Online' if
+                    result.is_online else 'Offline' }}
+                </span>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- Threat Graph Section -->
+    {% if result.graph_data %}
+    <div class="glass-panel" style="margin-top: 1.5rem; padding: 1.5rem; background: rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3><i class="fas fa-project-diagram"></i> Threat Graph</h3>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Interactive Visualization | <span
+                    id="graph-debug">Initializing...</span></span>
+        </div>
+        <div id="cy"
+            style="width: 100%; height: 400px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-top: 1rem;">
+        </div>
+        <div
+            style="display: flex; gap: 15px; justify-content: center; margin-top: 10px; font-size: 0.8rem; color: var(--text-muted);">
+            <span><span
+                    style="display:inline-block;width:10px;height:10px;background:#6366f1;border-radius:50%;"></span>
+                Source</span>
+            <span><span
+                    style="display:inline-block;width:10px;height:10px;background:#f59e0b;border-radius:50%;"></span>
+                Redirect</span>
+            <span><span
+                    style="display:inline-block;width:10px;height:10px;background:#94a3b8;border-radius:50%;"></span>
+                Hosting IP</span>
+            <span><span
+                    style="display:inline-block;width:10px;height:10px;background:#8b5cf6;border-radius:50%;"></span>
+                External Link</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Feedback Section -->
+    <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
+        <form action="{{ url_for('report_feedback', scan_id=result.id) }}" method="POST">
+            {% if result.status == 'MALICIOUS' %}
+            <input type="hidden" name="type" value="false_positive">
+            <button type="submit" class="glass-panel"
+                style="padding: 8px 15px; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; border: 1px solid var(--glass-border);">
+                <i class="fas fa-flag"></i> Report as Safe (False Positive)
+            </button>
+            {% else %}
+            <input type="hidden" name="type" value="false_negative">
+            <button type="submit" class="glass-panel"
+                style="padding: 8px 15px; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; border: 1px solid var(--glass-border);">
+                <i class="fas fa-flag"></i> Report as Malicious (False Negative)
+            </button>
+            {% endif %}
+        </form>
+    </div>
+
+
+
+    {% if result.status == 'MALICIOUS' %}
+    <div style="margin-top: 2rem; padding: 1.5rem; border: 1px dashed var(--danger); border-radius: 8px;">
+        <h4 style="color: var(--danger); margin-bottom: 10px;">Safety Recommendations</h4>
+        <ul style="padding-left: 20px; color: var(--text-muted);">
+            <li>Do not click on links on this page.</li>
+            <li>Do not enter any personal or financial information.</li>
+            <li>Close the tab immediately.</li>
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+{% endif %}
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); z-index: 1000; justify-content: center; align-items: center; flex-direction: column;">
+
+    <!-- Super Animation Container -->
+    <!-- New Cyber Hexagon Animation -->
+    <div class="cyber-loader">
+        <div class="hex-ring"></div>
+        <div class="hex-ring"></div>
+        <div class="hex-core">
+            <i class="fas fa-fingerprint"></i>
+        </div>
+        <div class="scan-line"></div>
+    </div>
+
+    <div style="margin-top: 3rem; text-align: center; z-index: 1001;">
+        <h3 class="animate-pulse" style="color: white; margin-bottom: 0.5rem; letter-spacing: 1px;">ANALYZING
+            TARGET
+        </h3>
+        <p style="color: #94a3b8; font-family: monospace;" id="scanText">Initializing Neural Network...</p>
+    </div>
+</div>
+
+<style>
+    .cyber-loader {
+        position: relative;
+        width: 150px;
+        height: 150px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .hex-ring {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border: 2px solid var(--primary);
+        clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+        animation: spin-hex 3s linear infinite;
+        opacity: 0.7;
+    }
+
+    .hex-ring:nth-child(2) {
+        width: 80%;
+        height: 80%;
+        border-color: #f59e0b;
+        animation-direction: reverse;
+        animation-duration: 2s;
+    }
+
+    .hex-core {
+        position: absolute;
+        font-size: 3rem;
+        color: white;
+        text-shadow: 0 0 15px var(--primary);
+        animation: pulse-core 1.5s infinite ease-in-out;
+    }
+
+    .scan-line {
+        position: absolute;
+        width: 100%;
+        height: 4px;
+        background: lime;
+        box-shadow: 0 0 10px lime;
+        top: 0;
+        animation: scan-vertical 2s linear infinite;
+        clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    }
+
+    @keyframes spin-hex {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    @keyframes pulse-core {
+
+        0%,
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        50% {
+            transform: scale(1.1);
+            opacity: 0.8;
+        }
+    }
+
+    @keyframes scan-vertical {
+        0% {
+            top: 0%;
+            opacity: 0;
+        }
+
+        10% {
+            opacity: 1;
+        }
+
+        90% {
+            opacity: 1;
+        }
+
+        100% {
+            top: 100%;
+            opacity: 0;
+        }
+    }
+
+    .animate-pulse {
+        animation: text-pulse 1.5s infinite;
+    }
+
+    @keyframes text-pulse {
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.5;
+        }
+    }
+
+    /* --- New Utility Classes for Progress Bars --- */
+    .bg-safe {
+        background-color: var(--success);
+    }
+
+    .bg-warning {
+        background-color: var(--warning);
+    }
+
+    .bg-danger {
+        background-color: var(--danger);
+    }
+
+    /* --- Text Color Utilities --- */
+    .text-safe {
+        color: var(--success) !important;
+    }
+
+    .text-warning {
+        color: #f59e0b !important;
+    }
+
+    /* var(--warning) might be too light for text */
+    .text-danger {
+        color: #ef4444 !important;
+    }
+
+    /* var(--danger) */
+
+    /* --- Gauge Needle Animation --- */
+    .needle-wrapper {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        width: 4px;
+        height: 90px;
+        background: white;
+        transform-origin: bottom center;
+        transform: rotate(var(--needle-angle));
+        transition: transform 1s ease-out;
+        border-radius: 2px;
+        z-index: 10;
+    }
+
+    .progress-fill {
+        width: var(--prog-width);
+        height: 100%;
+    }
+
+    /* --- Info Card Styles --- */
+    .info-card {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .info-card .label {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 5px;
+    }
+
+    .info-card .value {
+        font-size: 1.1rem;
+        color: white;
+        font-weight: 500;
+    }
+</style>
+
+<!-- Hidden Data Container to pass Jinja data to JS safely -->
+<script id="scan-data-breakdown" type="application/json">
+    {{ result.breakdown | tojson if result and result.breakdown else "{}" | safe }}
+</script>
+<script id="scan-data-graph" type="application/json">
+    {{ result.graph_data | tojson if result and result.graph_data else "{}" | safe }}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // ... (rest of functions remain same up to DOMContentLoaded)
+    function setScanMode(mode) {
+        // Inputs
+        const singleInput = document.getElementById('singleInput');
+        const batchInput = document.getElementById('batchInput');
+
+        // Buttons
+        const btns = {
+            single: document.getElementById('btn-single'),
+            batch: document.getElementById('btn-batch')
+        };
+
+        // Fields
+        const singleUrl = document.getElementById('singleUrlField');
+        const batchUrl = document.getElementById('batchUrlField');
+        const scanInputType = document.getElementById('scanInputType');
+
+        // Reset styles
+        Object.values(btns).forEach(function (btn) {
+            btn.style.borderColor = 'transparent';
+            btn.style.color = 'var(--text-muted)';
+        });
+
+        singleInput.style.display = 'none';
+        batchInput.style.display = 'none';
+
+        // Active State Logic
+        btns[mode].style.borderColor = 'var(--primary)';
+        btns[mode].style.color = 'var(--primary)';
+
+        if (mode === 'single') {
+            singleInput.style.display = 'flex';
+            scanInputType.value = 'standard';
+            singleUrl.disabled = false;
+            singleUrl.required = true;
+            batchUrl.disabled = true;
+        } else if (mode === 'batch') {
+            batchInput.style.display = 'block';
+            scanInputType.value = 'batch';
+            singleUrl.disabled = true;
+            singleUrl.required = false;
+            batchUrl.disabled = false;
+        }
+    }
+
+    // Form Loading Logic
+    const scanForm = document.getElementById('scanForm');
+    if (scanForm) {
+        scanForm.addEventListener('submit', function () {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+
+            const isBatch = document.getElementById('scanInputType').value === 'batch';
+            if (isBatch) {
+                const titleEl = document.querySelector('#loadingOverlay h3');
+                if (titleEl) titleEl.innerText = "Processing Batch Requests...";
+
+                const textEl = document.querySelector('#loadingOverlay p');
+                if (textEl) textEl.innerText = "This may take a few seconds";
+            }
+
+            const texts = [
+                "Resolving DNS Records...",
+                "Checking SSL Certificates...",
+                "Tracing Server Location...",
+                "Verifying Domain Age...",
+                "Finalizing Risk Score..."
+            ];
+
+            let i = 0;
+            const scanText = document.getElementById('scanText');
+            if (scanText) {
+                setInterval(function () {
+                    scanText.innerText = texts[i % texts.length];
+                    i++;
+                }, 800);
+            }
+        });
+    }
+
+    function toggleAiDetails() {
+        const details = document.getElementById('aiDetails');
+        const btn = event.currentTarget;
+        if (details.style.display === 'none') {
+            details.style.display = 'block';
+            btn.innerHTML = '<i class="fas fa-chevron-up"></i> Hide AI Analysis Details';
+        } else {
+            details.style.display = 'none';
+            btn.innerHTML = '<i class="fas fa-chevron-down"></i> View AI Analysis Details';
+        }
+    }
+
+    // --- Chart.js & Cytoscape Initialization ---
+    document.addEventListener("DOMContentLoaded", function () {
+        // Auto-fill from URL param (for Extension)
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoUrl = urlParams.get('url');
+        if (autoUrl) {
+            const singleUrlField = document.getElementById('singleUrlField');
+            if (singleUrlField) singleUrlField.value = autoUrl;
+        }
+
+        // Read Data from JSON Scripts
+        let breakdown = {};
+        let graphData = null;
+
+        try {
+            const breakdownEl = document.getElementById('scan-data-breakdown');
+            if (breakdownEl) {
+                breakdown = JSON.parse(breakdownEl.textContent);
+            }
+
+            const graphEl = document.getElementById('scan-data-graph');
+            if (graphEl) {
+                graphData = JSON.parse(graphEl.textContent);
+            }
+        } catch (e) {
+            console.error("Error parsing scan data", e);
+        }
+
+        // Radar Chart
+        const chartCanvas = document.getElementById('analysisChart');
+        if (chartCanvas && Object.keys(breakdown).length > 0) {
+            const ctx = chartCanvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Infrastructure', 'Domain Reputation', 'URL Patterns'],
+                    datasets: [{
+                        label: 'Risk Composition',
+                        data: [
+                            breakdown.infrastructure || 0,
+                            breakdown.domain_reputation || 0,
+                            breakdown.url_patterns || 0
+                        ],
+                        backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(99, 102, 241, 1)'
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { color: 'rgba(255, 255, 255, 0.7)', font: { size: 12 } },
+                            ticks: { display: false, max: 100 },
+                            suggestedMin: 0,
+                            suggestedMax: 100
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // Threat Graph (Cytoscape)
+        try {
+            const cyContainer = document.getElementById('cy');
+            if (cyContainer && graphData && graphData.nodes && graphData.nodes.length > 0) {
+                // Check if library loaded
+                if (typeof cytoscape === 'undefined') {
+                    throw new Error("Cytoscape library not loaded");
+                }
+
+                var cy = cytoscape({
+                    container: cyContainer,
+                    elements: graphData,
+                    style: [
+                        {
+                            selector: 'node',
+                            style: {
+                                'background-color': 'data(color)',
+                                'label': 'data(label)',
+                                'color': '#fff',
+                                'text-valign': 'bottom',
+                                'text-halign': 'center',
+                                'font-size': '12px',
+                                'text-background-opacity': 0.5,
+                                'text-background-color': '#000',
+                                'text-background-padding': '2px',
+                                'text-background-shape': 'roundrectangle'
+                            }
+                        },
+                        {
+                            selector: 'edge',
+                            style: {
+                                'width': 2,
+                                'line-color': '#4b5563',
+                                'target-arrow-color': '#4b5563',
+                                'target-arrow-shape': 'triangle',
+                                'curve-style': 'bezier',
+                                'label': 'data(label)',
+                                'font-size': '10px',
+                                'color': '#94a3b8',
+                                'text-rotation': 'autorotate',
+                                'text-background-opacity': 1,
+                                'text-background-color': '#1f2937'
+                            }
+                        }
+                    ],
+                    layout: {
+                        name: 'breadthfirst',
+                        directed: true,
+                        padding: 50,
+                        spacingFactor: 1.5,
+                        animate: true
+                    },
+                    userZoomingEnabled: true, // Enable zooming
+                    userPanningEnabled: true, // Enable panning
+                    minZoom: 0.5,
+                    maxZoom: 2
+                });
+
+                // Force layout processing
+                console.log("Forcing cytoscape layout...");
+                cy.layout({
+                    name: 'grid', // Switch to grid for guaranteed visibility
+                    animate: false,
+                    padding: 10
+                }).run();
+
+                // Center graph
+                cy.center();
+                cy.fit();
+
+                // Update debug text
+                document.getElementById('graph-debug').innerText = `Rendering ${graphData.nodes.length} nodes, ${graphData.edges.length} edges.`;
+                document.getElementById('graph-debug').style.color = 'var(--success)';
+
+            } else {
+                console.warn("Graph data empty or container missing", { cyContainer, graphData });
+                document.getElementById('graph-debug').innerText = "No graph data available.";
+            }
+        } catch (err) {
+            console.error("Graph Error:", err);
+            document.getElementById('graph-debug').innerText = "Error: " + err.message;
+            document.getElementById('graph-debug').style.color = 'var(--danger)';
+        }
+    });
+</script>
+{% endblock %}

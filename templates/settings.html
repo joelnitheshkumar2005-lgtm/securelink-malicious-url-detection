@@ -1,0 +1,51 @@
+{% extends 'layout.html' %}
+
+{% block page_content %}
+<div class="header">
+    <h1>Settings</h1>
+</div>
+
+<div class="glass-panel animate-fade" style="padding: 2rem; margin-bottom: 2rem;">
+    <h3 style="margin-bottom: 2rem;">Profile Settings</h3>
+    <form method="POST">
+        <input type="hidden" name="action" value="update_profile">
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" value="{{ user.username }}" class="form-control" disabled style="opacity: 0.7;">
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" value="{{ user.email }}" class="form-control" disabled style="opacity: 0.7;">
+        </div>
+        <div class="form-group">
+            <label>New Password</label>
+            <input type="password" name="password" class="form-control" placeholder="Leave blank to keep current">
+        </div>
+        <button type="submit" class="btn-primary">Update Profile</button>
+    </form>
+</div>
+
+
+
+<div class="glass-panel" style="padding: 2rem; border: 1px solid var(--danger);">
+    <h3 style="margin-bottom: 1rem; color: var(--danger);">Danger Zone</h3>
+    <p style="margin-bottom: 1.5rem; color: var(--text-muted);">Once you delete your history, there is no going back.
+        Please be certain.</p>
+
+    <button onclick="confirmClear()" class="btn-danger">
+        <i class="fas fa-trash"></i> Clear All Scan History
+    </button>
+
+    <form id="clearForm" method="POST" style="display: none;">
+        <input type="hidden" name="action" value="clear_history">
+    </form>
+</div>
+
+<script>
+    function confirmClear() {
+        if (confirm('Are you sure you want to clear all scan history? This cannot be undone.')) {
+            document.getElementById('clearForm').submit();
+        }
+    }
+</script>
+{% endblock %}

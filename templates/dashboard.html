@@ -1,0 +1,155 @@
+{% extends 'layout.html' %}
+
+{% block page_content %}
+<div class="header">
+    <h1>Dashboard</h1>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <span style="color: var(--text-muted);">Welcome, {{ session['username'] }}</span>
+        <div
+            style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--secondary)); display: flex; justify-content: center; align-items: center;">
+            <i class="fas fa-user"></i>
+        </div>
+    </div>
+</div>
+
+<div class="stats-grid animate-fade">
+    <div class="stat-card glass-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="stat-label">Total Scans</span>
+            <i class="fas fa-globe" style="color: var(--primary);"></i>
+        </div>
+        <div class="stat-value">{{ total }}</div>
+    </div>
+    <div class="stat-card glass-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="stat-label">Safe URLs</span>
+            <i class="fas fa-check-circle" style="color: var(--success);"></i>
+        </div>
+        <div class="stat-value" style="color: var(--success);">{{ safe }}</div>
+    </div>
+    <div class="stat-card glass-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="stat-label">Malicious URLs</span>
+            <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i>
+        </div>
+        <div class="stat-value" style="color: var(--danger);">{{ malicious }}</div>
+    </div>
+    <div class="stat-card glass-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="stat-label">Suspicious URLs</span>
+            <i class="fas fa-exclamation-circle" style="color: var(--warning);"></i>
+        </div>
+        <div class="stat-value" style="color: var(--warning);">{{ suspicious }}</div>
+    </div>
+</div>
+
+
+
+<div class="stats-grid animate-fade" style="margin-bottom: 2rem;">
+    <div class="glass-panel" style="padding: 1.5rem; grid-column: span 2;">
+        <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--text-muted);">Scan History (7 Days)</h3>
+        <canvas id="historyChart" height="100"></canvas>
+    </div>
+    <div class="glass-panel" style="padding: 1.5rem;">
+        <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--text-muted);">Threat Distribution</h3>
+        <canvas id="distributionChart" height="200"></canvas>
+    </div>
+</div>
+
+<!-- Data Containers -->
+<script id="data-dates" type="application/json">{{ chart_dates | tojson }}</script>
+<script id="data-counts" type="application/json">{{ chart_counts | tojson }}</script>
+<script id="data-stats" type="application/json">
+    {
+        "safe": {{ safe | tojson }},
+        "malicious": {{ malicious | tojson }},
+        "suspicious": {{ suspicious | default(0) | tojson }}
+    }
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Data from Flask
+        const dates = JSON.parse(document.getElementById('data-dates').textContent);
+        const counts = JSON.parse(document.getElementById('data-counts').textContent);
+
+        const stats = JSON.parse(document.getElementById('data-stats').textContent);
+        const safeCount = stats.safe;
+        const maliciousCount = stats.malicious;
+        const suspiciousCount = stats.suspicious;
+
+        // Common Chart Defaults
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+
+        // History Chart
+        const historyCtx = document.getElementById('historyChart').getContext('2d');
+        new Chart(historyCtx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: 'Scans',
+                    data: counts,
+                    borderColor: '#00f2fe',
+                    backgroundColor: 'rgba(0, 242, 254, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                }
+            }
+        });
+
+        // Distribution Chart
+        const distCtx = document.getElementById('distributionChart').getContext('2d');
+        new Chart(distCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Safe', 'Malicious', 'Suspicious'],
+                datasets: [{
+                    data: [safeCount, maliciousCount, suspiciousCount],
+                    backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '70%',
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    });
+</script>
+
+<div class="glass-panel" style="padding: 2rem;">
+    <h3 style="margin-bottom: 1.5rem;">Quick Actions</h3>
+    <div style="display: flex; gap: 20px;">
+        <a href="{{ url_for('scan') }}" class="btn-primary" style="text-align: center; flex: 1; padding: 2rem;">
+            <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+            Scan New URL
+        </a>
+        <a href="{{ url_for('reports') }}" class="glass-panel"
+            style="text-align: center; flex: 1; padding: 2rem; color: var(--text-main); text-decoration: none; border: 1px dashed var(--glass-border);">
+            <i class="fas fa-file-pdf"
+                style="font-size: 2rem; margin-bottom: 1rem; display: block; color: var(--text-muted);"></i>
+            Generate Report
+        </a>
+    </div>
+</div>
+
+<div class="glass-panel" style="padding: 2rem; margin-top: 2rem;">
+    <h3 style="margin-bottom: 1rem;">Recent Activity</h3>
+    <p style="color: var(--text-muted);">Last scanned: <span style="color: var(--text-main);">{{ last_scan }}</span></p>
+</div>
+{% endblock %}

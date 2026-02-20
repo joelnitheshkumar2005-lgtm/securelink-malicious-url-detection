@@ -1,0 +1,68 @@
+{% extends 'layout.html' %}
+
+{% block page_content %}
+<div class="header">
+    <h1>Reports Center</h1>
+</div>
+
+<div class="glass-panel animate-fade" style="padding: 2rem; margin-bottom: 2rem;">
+    <h3 style="margin-bottom: 2rem;">Summary Report</h3>
+    <div class="stats-grid">
+        <div style="text-align: center;">
+            <div style="font-size: 3rem; font-weight: 700;">{{ total }}</div>
+            <div style="color: var(--text-muted);">Total Scanned</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 3rem; font-weight: 700; color: var(--success);">{{ safe }}</div>
+            <div style="color: var(--text-muted);">Safe URLs</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 3rem; font-weight: 700; color: var(--danger);">{{ malicious }}</div>
+            <div style="color: var(--text-muted);">Malicious URLs</div>
+        </div>
+    </div>
+</div>
+
+<div class="glass-panel" style="padding: 2rem;">
+    <h3 style="margin-bottom: 1.5rem;">Export Data</h3>
+    <div style="display: flex; gap: 20px;">
+        <a href="{{ url_for('download_report', file_type='pdf') }}" class="btn-primary"
+            style="flex: 1; text-align: center;">
+            <i class="fas fa-file-pdf"></i> Download PDF Report
+        </a>
+        <a href="{{ url_for('download_report', file_type='csv') }}" class="btn-primary"
+            style="flex: 1; text-align: center; background: linear-gradient(135deg, #10b981, #059669);">
+            <i class="fas fa-file-csv"></i> Download CSV Data
+        </a>
+        <button onclick="window.print()" class="glass-panel"
+            style="flex: 1; color: var(--text-main); cursor: pointer; border: 1px solid var(--glass-border);">
+            <i class="fas fa-print"></i> Print View
+        </button>
+    </div>
+</div>
+
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+
+        .main-content,
+        .main-content * {
+            visibility: visible;
+        }
+
+        .main-content {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+
+        .sidebar,
+        .btn-primary {
+            display: none !important;
+        }
+    }
+</style>
+{% endblock %}

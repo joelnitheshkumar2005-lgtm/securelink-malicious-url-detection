@@ -1,0 +1,79 @@
+{% extends 'layout.html' %}
+
+{% block page_content %}
+<div class="header">
+    <h1>Scan History</h1>
+    <div class="form-group" style="margin-bottom: 0; width: 300px;">
+        <input type="text" id="searchInput" class="form-control" placeholder="Search URLs..." onkeyup="searchTable()">
+    </div>
+</div>
+
+<div class="glass-panel" style="padding: 0;">
+    <div class="table-container">
+        <table id="historyTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>URL</th>
+                    <th>Status</th>
+                    <th>Risk Level</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for scan in scans %}
+                <tr>
+                    <td>{{ scan.date.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{
+                        scan.url }}</td>
+                    <td>
+                        <span class="badge {{ 'badge-low' if scan.status == 'SAFE' else 'badge-high' }}">
+                            {{ scan.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <span
+                            class="badge {{ 'badge-low' if scan.risk_level == 'Low' else ('badge-medium' if scan.risk_level == 'Medium' else 'badge-high') }}">
+                            {{ scan.risk_level }}
+                        </span>
+                    </td>
+                    <td>
+
+                        <a href="{{ url_for('download_single', scan_id=scan.id) }}" class="glass-panel"
+                            style="border: 1px solid var(--text-muted); color: var(--text-muted); padding: 5px 10px; cursor: pointer; font-size: 0.8rem; text-decoration: none; display: inline-block; margin-left: 5px;">
+                            <i class="fas fa-file-download"></i> PDF
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted);">No scan history found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function searchTable() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("searchInput");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("historyTable");
+        tr = table.getElementsByTagName("tr");
+
+        for (i = 1; i < tr.length; i++) {
+            td = tr[i].getElementsByTagName("td")[1]; // URL column
+            if (td) {
+                txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

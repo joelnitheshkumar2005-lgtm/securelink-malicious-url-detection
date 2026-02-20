@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="app-container">
+    <nav class="sidebar glass-panel" style="border-radius: 0; padding: 2rem;">
+        <div class="logo">
+            <i class="fas fa-shield-alt"></i> SecureLink
+        </div>
+        <ul class="nav-links">
+            <li><a href="{{ url_for('dashboard') }}" class="{{ 'active' if page == 'dashboard' else '' }}"><i
+                        class="fas fa-th-large"></i> Dashboard</a></li>
+            <li><a href="{{ url_for('scan') }}" class="{{ 'active' if page == 'scan' else '' }}"><i
+                        class="fas fa-search"></i> Scan URL</a></li>
+            <li><a href="{{ url_for('scan_pdf') }}" class="{{ 'active' if page == 'scan_pdf' else '' }}"><i
+                        class="fas fa-file-pdf"></i> Scan PDF</a></li>
+            {% if session.get('is_admin') %}
+            <li><a href="{{ url_for('admin') }}" class="{{ 'active' if page == 'admin' else '' }}"
+                    style="color: #34d399;"><i class="fas fa-user-shield"></i> Admin Panel</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('history') }}" class="{{ 'active' if page == 'history' else '' }}"><i
+                        class="fas fa-history"></i> History</a></li>
+            <li><a href="{{ url_for('reports') }}" class="{{ 'active' if page == 'reports' else '' }}"><i
+                        class="fas fa-file-alt"></i> Reports</a></li>
+            <li><a href="{{ url_for('settings') }}" class="{{ 'active' if page == 'settings' else '' }}"><i
+                        class="fas fa-cog"></i> Settings</a></li>
+            <li style="margin-top: auto;">
+                <a href="#" id="theme-toggle">
+                    <i class="fas fa-moon"></i> <span>Dark Mode</span>
+                </a>
+            </li>
+            <li><a href="{{ url_for('logout') }}" style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i>
+                    Logout</a></li>
+        </ul>
+    </nav>
+    <main class="main-content">
+        {% block page_content %}{% endblock %}
+    </main>
+</div>
+{% endblock %}

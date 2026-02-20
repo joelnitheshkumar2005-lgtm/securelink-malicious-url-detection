@@ -1,0 +1,10 @@
+Flask
+Flask-SQLAlchemy
+fpdf
+python-whois
+requests
+dnspython
+pypdf
+email-validator
+gunicorn
+waitress

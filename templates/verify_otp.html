@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-box glass-panel animate-fade">
+        <div class="logo" style="justify-content: center; margin-bottom: 2rem;">
+            <i class="fas fa-envelope-open-text"></i> SecureLink
+        </div>
+        <h2 style="margin-bottom: 1rem;">Verify Email</h2>
+        <p style="text-align: center; color: var(--text-muted); margin-bottom: 2rem;">
+            We sent a verification code to <strong>{{ email }}</strong>
+        </p>
+
+        <form method="POST">
+            <div class="form-group">
+                <label>Enter 6-Digit OTP</label>
+                <input type="text" name="otp" class="form-control" placeholder="123456" maxlength="6"
+                    style="text-align: center; letter-spacing: 5px; font-size: 1.2rem;" required>
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%;">Verify Account</button>
+        </form>
+
+        <p style="margin-top: 1.5rem; color: var(--text-muted); text-align: center;">
+            <small>Didn't receive it? <a href="{{ url_for('register') }}"
+                    style="color: var(--primary);">Restart</a></small>
+        </p>
+    </div>
+</div>
+{% endblock %}

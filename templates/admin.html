@@ -1,0 +1,203 @@
+{% extends 'layout.html' %}
+{% block page_content %}
+<div class="header">
+    <h1><i class="fas fa-tachometer-alt"></i> Model Admin Dashboard</h1>
+</div>
+
+<!-- 1. System Stats -->
+<div class="stats-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 3rem;">
+    <div class="stat-card glass-panel" style="padding: 1.5rem; text-align: center;">
+        <div class="stat-value" style="font-size: 2.5rem; color: var(--primary); font-weight: bold;">{{ stats.users }}
+        </div>
+        <div class="stat-label" style="color: var(--text-muted);">Total Users</div>
+    </div>
+    <div class="stat-card glass-panel" style="padding: 1.5rem; text-align: center;">
+        <div class="stat-value" style="font-size: 2.5rem; color: var(--warning); font-weight: bold;">{{ stats.scans }}
+        </div>
+        <div class="stat-label" style="color: var(--text-muted);">Total Scans</div>
+    </div>
+    <div class="stat-card glass-panel" style="padding: 1.5rem; text-align: center;">
+        <div class="stat-value text-danger" style="font-size: 2.5rem; color: var(--danger); font-weight: bold;">{{
+            stats.threats }}</div>
+        <div class="stat-label" style="color: var(--text-muted);">Threats Blocked</div>
+    </div>
+</div>
+
+<!-- 2. User Management -->
+<div class="glass-panel animate-fade" style="padding: 2rem; margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3 style="margin: 0;"><i class="fas fa-users-cog"></i> User Management</h3>
+        <form action="{{ url_for('admin') }}" method="GET" style="display: flex; gap: 10px; margin: 0;">
+            <input type="text" name="q" placeholder="Search by username or email..."
+                value="{{ request.args.get('q', '') }}"
+                style="padding: 8px 15px; border-radius: 5px; border: 1px solid var(--text-muted); background: var(--bg-dark); color: var(--text-main); width: 250px;">
+            <button type="submit" class="btn-primary" style="padding: 8px 15px;">
+                <i class="fas fa-search"></i>
+            </button>
+            {% if request.args.get('q') %}
+            <a href="{{ url_for('admin') }}" class="glass-panel"
+                style="padding: 8px 15px; color: var(--text-muted); text-decoration: none;">
+                <i class="fas fa-times"></i>
+            </a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.id }}</td>
+                    <td>
+                        {{ u.username }}
+                        {% if u.username == 'admin' %}
+                        <span class="badge" style="background: var(--primary); color: black; margin-left: 5px;">SUPER
+                            ADMIN</span>
+                        {% elif u.is_admin %}
+                        <span class="badge" style="background: #fbbf24; color: black; margin-left: 5px;">ADMIN</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ u.email }}</td>
+                    <td style="display: flex; gap: 10px;">
+                        {% if u.username != 'admin' %}
+                        <!-- Delete -->
+                        <form action="{{ url_for('delete_user', user_id=u.id) }}" method="POST"
+                            onsubmit="return confirm('Are you sure? This action is PERMANENT and cannot be undone. All user data will be lost.');"
+                            style="margin:0;">
+                            <button type="submit" class="glass-panel"
+                                style="border: 1px solid var(--danger); color: var(--danger); padding: 5px 10px; cursor: pointer; font-size: 0.8rem;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+
+                        <!-- Promote/Demote (Super Admin Only) -->
+                        {% if session['username'] == 'admin' %}
+                        {% if u.is_admin %}
+                        <form action="{{ url_for('demote_user', user_id=u.id) }}" method="POST"
+                            onsubmit="return confirm('Revoke Admin Access?');" style="margin:0;">
+                            <button type="submit" class="glass-panel"
+                                style="border: 1px solid #fbbf24; color: #fbbf24; padding: 5px 10px; cursor: pointer; font-size: 0.8rem;">
+                                <i class="fas fa-user-minus"></i> Revoke
+                            </button>
+                        </form>
+                        {% else %}
+                        <form action="{{ url_for('promote_user', user_id=u.id) }}" method="POST"
+                            onsubmit="return confirm('Grant Admin Access?');" style="margin:0;">
+                            <button type="submit" class="glass-panel"
+                                style="border: 1px solid var(--primary); color: var(--primary); padding: 5px 10px; cursor: pointer; font-size: 0.8rem;">
+                                <i class="fas fa-user-plus"></i> Promote
+                            </button>
+                        </form>
+                        {% endif %}
+                        {% endif %}
+
+                        {% else %}
+                        <span style="color: var(--text-muted); font-size: 0.8rem;">Protected</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 3. Recent Global Activity -->
+<div class="glass-panel animate-fade" style="padding: 2rem; margin-bottom: 2rem;">
+    <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-satellite-dish"></i> Recent Global Activity</h3>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>URL</th>
+                    <th>Status</th>
+                    <th>Risk</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if recent_scans %}
+                {% for s in recent_scans %}
+                <tr>
+                    <td>{{ s.date.strftime('%H:%M:%S') }}</td>
+                    <td>{{ s.user.username if s.user else 'Unknown' }}</td>
+                    <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <a href="{{ url_for('scan', url=s.url) }}"
+                            style="color: var(--text-main); text-decoration: none;">
+                            <i class="fas fa-external-link-alt"
+                                style="font-size: 0.8rem; margin-right: 5px; color: var(--text-muted);"></i>
+                            {{ s.url }}
+                        </a>
+                    </td>
+                    <td>
+                        <span
+                            class="badge {{ 'badge-low' if s.status == 'SAFE' else ('badge-high' if s.status == 'MALICIOUS' else 'badge-medium') }}">
+                            {{ s.status }}
+                        </span>
+                    </td>
+                    <td>{{ s.score }}%</td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted);">No recent activity.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="glass-panel animate-fade" style="padding: 2rem;">
+    <h3>User Feedback Queue</h3>
+    {% if feedbacks %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Scan Status</th>
+                    <th>Reported As</th>
+                    <th>URL</th>
+                    <th>Comments</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in feedbacks %}
+                <tr>
+                    <td>{{ f.scan_status }}</td>
+                    <td class="{{ 'text-success' if f.feedback == 'false_positive' else 'text-danger' }}">
+                        {{ 'False Positive (Is Safe)' if f.feedback == 'false_positive' else 'False Negative (Is
+                        Malicious)' }}
+                    </td>
+                    <td style="font-family: monospace; font-size: 0.9rem;">{{ f.url }}</td>
+                    <td>{{ f.comments or '-' }}</td>
+                    <td>
+                        <form action="{{ url_for('delete_feedback', feedback_id=f.id) }}" method="POST"
+                            onsubmit="return confirm('Delete this feedback report?');" style="margin:0;">
+                            <button type="submit" class="glass-panel"
+                                style="border: 1px solid var(--danger); color: var(--danger); padding: 5px 10px; cursor: pointer; font-size: 0.8rem;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="text-align: center; color: var(--text-muted); margin-top: 2rem;">No feedback reports yet.</p>
+    {% endif %}
+</div>
+{% endblock %}
