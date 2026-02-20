@@ -1679,9 +1679,28 @@ def update_db_schema():
     except Exception as e:
         print(f"Schema update error (ignored): {e}")
 
+# --- PRODCUTION SETUP ---
+# Ensure instance folder exists
+try:
+    if not os.path.exists(os.path.dirname(db_path)):
+        os.makedirs(os.path.dirname(db_path))
+except OSError:
+    pass
+
+# Auto-create DB and Tables on import (Crucial for Render/Gunicorn with ephemeral SQLite)
+with app.app_context():
+    try:
+        db.create_all()
+        # Optional: Run schema updates or admin creation if needed
+        # update_db_schema()
+        # create_default_admin()
+        print("Database initialized successfully.")
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
+        # Dev-only explicit updates
         update_db_schema()
         create_default_admin()
     app.run(debug=True)
